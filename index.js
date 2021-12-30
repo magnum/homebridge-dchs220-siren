@@ -29,8 +29,8 @@ class SirenSwitchAccessory {
         this.duration = (this.config.duration && !isNaN(this.config.duration) && this.config.duration > 0 && this.config.duration <= 88888) ? this.config.duration : 88888;
         this.sirenClient = new Siren(this.ipAddress, this.pin);
         this.updateInterval = (this.config.updateInterval && !isNaN(this.config.updateInterval) && this.config.updateInterval >= 100) ? this.config.updateInterval : false;
-
         this.service = new Service.Switch(this.config.name)
+	this.isOn = false;
     }
 
     getServices() {
@@ -61,7 +61,8 @@ class SirenSwitchAccessory {
     }
 
     setOnCharacteristicHandler(value, callback) {
-        // :: Log In to the Siren
+        console.log("setOnCharacteristicHandler, value: "+value);
+	// :: Log In to the Siren
         this.sirenClient.login().then(status => {
             if (status !== 'success') {
                 this.log(":: An error occurred while logging in to the siren, please check the credentials in config.");
@@ -70,12 +71,12 @@ class SirenSwitchAccessory {
                 return callback(false);
             }
             // :: Play the Siren
-            if (value === true) {
+            if (value === true && !this.isOn) {
                 this.sirenClient.play(this.sound, this.volume, this.duration).then(status => {
                     if (status === 'OK') {
-                        this.service.getCharacteristic(Characteristic.StatusFault)
-                            .updateValue(false);
-                        return callback(null);
+                        this.service.getCharacteristic(Characteristic.StatusFault).updateValue(false);
+                        this.isOn = true;
+			return callback(null);
                     }
                     this.service.getCharacteristic(Characteristic.StatusFault)
                         .updateValue(true);
@@ -89,11 +90,11 @@ class SirenSwitchAccessory {
             }
 
             // :: Stop Playing the Siren
-            if (value === false) {
+            if (value === false && this.isOn == true) {
                 this.sirenClient.stop().then(status => {
                     if (status === 'OK') {
-                        this.service.getCharacteristic(Characteristic.StatusFault)
-                            .updateValue(false);
+                        this.service.getCharacteristic(Characteristic.StatusFault).updateValue(false);
+			this.isOn = false;
                         return callback(null);
                     }
                     this.service.getCharacteristic(Characteristic.StatusFault)
